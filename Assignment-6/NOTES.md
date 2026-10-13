@@ -1,6 +1,15 @@
 # CS 543 – Web Services
 # Assignment 6: Honest Responses — Status Codes, Errors & Validation
 
+## Team Details
+
+| S. No. | Team Member Name | Team ID |
+|---|---|---|
+| 1 | Radhika Verma | Team 11 |
+| 2 | Nandini Kanaujiya | Team 11 |
+| 3 | Alka Jha | Team 11 |
+| 4 | Alok Mishra | Team 11 |
+
 > **Project:** BookMe – Distributed Multi-Vendor Event Services Platform  
 > **Subsystem / Service:** BookMe Orders Service (`POST /orders`, `GET /orders`, `PATCH /orders`, `DELETE /orders`)  
 > **Author:** Alka Jha (`TargetUltimate-Alka`, Person C)  
@@ -27,7 +36,7 @@ Assignment 6 establishes honest, predictable, and robust HTTP communication for 
 3. **RFC 7807 Problem Details:** All errors are routed through a centralized `problem()` helper producing structured error envelopes with `Content-Type: application/problem+json; charset=utf-8`.
 4. **Pre-flight Field-Level Validation:** Rejects bad requests before executing database or business logic, collecting multiple invalid fields into an `errors[]` array under `422 Unprocessable Content`.
 5. **Content Negotiation:** Supports both `application/json` (default) and `application/xml`, returning `406 Not Acceptable` when unsupported formats are requested.
-6. **Retry Safety & Signalling:** Communicates backoff expectations using `Retry-After` headers on `429 Too Many Requests` and `503 Service Unavailable`, while respecting idempotency keys and ETag concurrency guards.
+6. **Retry Safety & Signalling:** Communicates backoff expectations using `Retry-After` headers on `429 Too Many Requests` and `503 Service Unavailable`, while respecting idempotency keys and ETags.
 
 ---
 
@@ -71,10 +80,10 @@ All error types in the BookMe platform use stable, namespaced URI identifiers un
 | :--- | :--- | :---: | :--- |
 | **`empty-cart`** | `https://api.bookme.internal/errors/empty-cart` | `422` | Client attempts to place an order where the `items` array is missing, null, or has length 0. |
 | **`validation-error`** | `https://api.bookme.internal/errors/validation-error` | `422` | Request body fails field-level constraints (e.g., non-integer `qty`, `qty < 1`, missing `address`). |
-| **`item-unavailable`** | `https://api.bookme.internal/errors/item-unavailable` | `409` | One or more items in the cart are out of stock, vendor is unavailable, or concurrent bookings exhausted remaining capacity slots. |
-| **`payment-declined`** | `https://api.bookme.internal/errors/payment-declined` | `402` | Escrow deposit transaction was rejected by the payment gateway due to insufficient funds, invalid card, or bank authorization failure. |
+| **`item-unavailable`** | `https://api.bookme.internal/errors/item-unavailable` | `409` | One or more items in the cart are out of stock, vendor is unavailable, or concurrent bookings exhausted resources. |
+| **`payment-declined`** | `https://api.bookme.internal/errors/payment-declined` | `402` | Escrow deposit transaction was rejected by the payment gateway due to insufficient funds, invalid card, or authorization failure. |
 | **`order-not-found`** | `https://api.bookme.internal/errors/order-not-found` | `404` | Client attempts to read, mutate, or delete an order using an unknown, expired, or mistyped ID. |
-| **`illegal-transition`** | `https://api.bookme.internal/errors/illegal-transition` | `409` | Client attempts a state machine transition disallowed by business rules (e.g., `DELIVERED` $\rightarrow$ `CANCELLED`, or `CREATED` $\rightarrow$ `DELIVERED`). |
+| **`illegal-transition`** | `https://api.bookme.internal/errors/illegal-transition` | `409` | Client attempts a state machine transition disallowed by business rules (e.g., `DELIVERED` → `CANCELLED`). |
 | **`rate-limited`** | `https://api.bookme.internal/errors/rate-limited` | `429` | Client surpasses the 100 requests per minute velocity limit; response signals `Retry-After: 60`. |
 | **`service-unavailable`** | `https://api.bookme.internal/errors/service-unavailable` | `503` | Database connection pool or upstream payment provider is temporarily unreachable; response signals `Retry-After: 120`. |
 | **`not-acceptable`** | `https://api.bookme.internal/errors/not-acceptable` | `406` | Client sends an `Accept` header specifying a MIME type the server cannot generate (e.g., `text/csv`). |
@@ -102,17 +111,17 @@ Below is an authentic RFC 7807 Problem Details response captured from `POST /ord
 
 #### Field Explanations & Labels:
 - **`type`**: `https://api.bookme.internal/errors/item-unavailable`  
-  *Label:* A dereferenceable URI reference that identifies the specific problem type. Serves as a machine-readable unique key for client SDKs to branch logic.
+  *Label:* A dereferenceable URI reference that identifies the specific problem type.
 - **`title`**: `"Item Unavailable"`  
-  *Label:* A short, human-readable summary of the problem type. It remains constant across all occurrences of this error type.
+  *Label:* A short, human-readable summary of the problem type.
 - **`status`**: `409`  
   *Label:* The exact HTTP status code generated by the origin server for this occurrence of the problem.
-- **`detail`**: `"Item 'Celebrity Vocalist Live Set' (item_celebrity_performer) is currently out of stock or capacity is exhausted."`  
-  *Label:* A human-readable explanation specific to this particular occurrence, identifying the exact item and why it failed.
+- **`detail`**: `"Item 'Celebrity Vocalist Live Set' ... is currently out of stock or capacity is exhausted."`  
+  *Label:* Human-readable explanation specific to this occurrence.
 - **`instance`**: `"/orders"`  
-  *Label:* A URI reference identifying the specific endpoint/resource where the problem occurred.
+  *Label:* URI reference identifying the endpoint/resource where the problem occurred.
 - **Extension Members (`itemId`, `itemName`, `requestedQty`)**:  
-  *Label:* Safe contextual metadata permitted by RFC 7807 Section 3.2 to help client applications render rich UI messaging without scraping text.
+  *Label:* Safe contextual metadata permitted by RFC 7807 to help clients render rich UI messaging.
 
 ---
 
@@ -164,7 +173,7 @@ X-Request-Id: 785ea9fc-2c40-410a-b3fa-0947ae5b4e3e
 }
 ```
 
-**Implementation note:** The validator in `src/validators/orderValidator.js` executes all schema checks upfront and appends every failure into the `errors` array before returning, preventing frustrating "whack-a-mole" validation roundtrips for the caller.
+**Implementation note:** The validator executes all schema checks upfront and appends every failure into the `errors` array before returning, preventing frustrating one-field-at-a-time retries.
 
 ---
 
@@ -172,23 +181,18 @@ X-Request-Id: 785ea9fc-2c40-410a-b3fa-0947ae5b4e3e
 > *Which endpoints are safe to retry, and which status codes communicate retry guidance to the client?*
 
 #### 1. Endpoints Safe to Retry:
-- **`GET /orders` & `GET /orders/{id}`**: Inherently safe and idempotent per RFC 9110. Retrying a failed read operation never mutates server state.
-- **`POST /orders` (when guarded by `Idempotency-Key`)**: Safe to retry. If a network disconnection occurs after the order was committed, repeating the `POST` with the same `Idempotency-Key: <UUID>` returns the cached `201 Created` response without creating duplicate orders or double-charging.
-- **`PATCH /orders/{id}` (when guarded by `If-Match`)**: Safe to retry after transient network errors, as long as the resource version hasn't changed.
-- **`DELETE /orders/{id}`**: Idempotent. Retrying cancellation leaves the order in the `CANCELLED` state.
+- **`GET /orders` & `GET /orders/{id}`**: Inherently safe and idempotent per RFC 9110.
+- **`POST /orders` (when guarded by `Idempotency-Key`)**: Safe to retry after transient network errors.
+- **`PATCH /orders/{id}` (when guarded by `If-Match`)**: Safe to retry as long as the resource version has not changed.
+- **`DELETE /orders/{id}`**: Idempotent; retrying cancellation leaves the order in the `CANCELLED` state.
 
 #### 2. Status Codes Communicating Retry Guidance:
-- **`HTTP 429 Too Many Requests`**:
-  - *Guidance Header:* `Retry-After: 60` (indicates the client must pause for 60 seconds before issuing further requests).
-  - *Client Action:* Back off and retry with exponential jitter after the indicated seconds.
-- **`HTTP 503 Service Unavailable`**:
-  - *Guidance Header:* `Retry-After: 120` (indicates upstream subsystem maintenance).
-  - *Client Action:* Transient server-side condition; safe to retry automatically after the delay.
-- **`HTTP 504 Gateway Timeout` & `HTTP 502 Bad Gateway`**:
-  - Transient network proxy failures. Safe to retry for idempotent requests.
+- **`HTTP 429 Too Many Requests`**: `Retry-After: 60`.
+- **`HTTP 503 Service Unavailable`**: `Retry-After: 120`.
+- **`HTTP 504 Gateway Timeout` & `HTTP 502 Bad Gateway`**: Transient proxy failures; safe to retry for idempotent requests.
 
 #### 3. Critical Rule on 4xx Errors:
-**Never retry an unchanged 4xx request** (such as `400 Bad Request`, `404 Not Found`, `409 Conflict`, or `422 Unprocessable Content`). These indicate client-side errors that will deterministically produce the exact same failure unless the client modifies the request payload or URL.
+**Never retry an unchanged 4xx request** (such as `400 Bad Request`, `404 Not Found`, `409 Conflict`, or `422 Unprocessable Content`). These indicate client-side errors that will deterministically fail until the client changes its request.
 
 ---
 
@@ -196,13 +200,11 @@ X-Request-Id: 785ea9fc-2c40-410a-b3fa-0947ae5b4e3e
 > *Where did you map an internal error to a clean client error, and what details did you hide from the caller?*
 
 #### 1. Code Location:
-- Centralized in `src/app.js` (lines 48–66) and the `try/catch` wrapper in `src/controllers/orderController.js` (lines 142–156).
+- Centralized in `src/app.js` and the `try/catch` wrapper in the controller layer.
 
 #### 2. Implementation:
 ```javascript
-// src/app.js - Global Error Handler
 app.use((err, req, res, next) => {
-  // 1. Privately log full technical details server-side
   console.error('[OrdersService Uncaught Error]', {
     requestId: req.id,
     url: req.originalUrl,
@@ -210,7 +212,6 @@ app.use((err, req, res, next) => {
     stack: err.stack,
   });
 
-  // 2. Return clean, un-leaked Problem Details to client
   if (!res.headersSent) {
     return problem(res, {
       type: 'internal-server-error',
@@ -223,10 +224,10 @@ app.use((err, req, res, next) => {
 ```
 
 #### 3. Details Hidden from the Caller:
-1. **Stack Traces:** File paths, line numbers, and internal module names (`D:\Personal_details_alkaJha...`) are never leaked in response bodies.
-2. **Database Queries & Engine Messages:** PostgreSQL connection strings, table names, constraint violations, and SQL syntax snippets are suppressed.
-3. **Environment & Secrets:** No credentials, API tokens, internal IP addresses, or server architecture details are revealed.
-4. **Correlation Tracing:** The client receives only a clean `X-Request-Id` header (e.g. `c0e43ca6-a895...`), which allows support teams to locate the private server log without exposing internal diagnostic information.
+1. **Stack Traces:** File paths, line numbers, and internal module names are never leaked.
+2. **Database Queries & Engine Messages:** SQL, connection strings, and constraint details are suppressed.
+3. **Environment & Secrets:** Credentials, tokens, or internal IPs are not revealed.
+4. **Correlation Tracing:** The client receives only a clean `X-Request-Id` header.
 
 ---
 
@@ -304,12 +305,12 @@ app.use((err, req, res, next) => {
       <pricePaise>2500000</pricePaise>
     </item>
   </items>
-    <address>
-      <line1>Grand Ballroom, Palace Grounds</line1>
-      <city>Ahmedabad</city>
-      <state>Gujarat</state>
-      <pincode>380015</pincode>
-    </address>
+  <address>
+    <line1>Grand Ballroom, Palace Grounds</line1>
+    <city>Ahmedabad</city>
+    <state>Gujarat</state>
+    <pincode>380015</pincode>
+  </address>
 </order>
 ```
 
@@ -331,8 +332,9 @@ app.use((err, req, res, next) => {
 ## Deliverables Summary
 
 All deliverables for CS543 Assignment 6 are contained in this directory:
-1. `src/` — Complete Orders service source code (`app.js`, `routes.js`, `controllers/`, `validators/`, `models/`, `utils/`).
-2. `tests/order.test.js` — Automated test suite verifying all 17 scenarios and 56 assertions (100% passing).
+1. `src/` — Complete Orders service source code.
+2. `tests/order.test.js` — Automated test suite verifying all scenarios.
 3. `openapi.yaml` — OpenAPI 3.1 specification documenting endpoints, headers, and Problem Details schemas.
 4. `transcript.txt` — Full wire-level HTTP transcripts capturing all success, failure, and content negotiation exchanges.
 5. `NOTES.md` — Complete reference document answering Questions 1 through 7.
+
