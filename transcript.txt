@@ -1,0 +1,677 @@
+# CS543 Web Services · Assignment 6 Execution Transcript
+# Service: BookMe Orders Service
+# Date: 2026-10-13T16:26:55.080Z
+# Host: http://localhost:4006
+
+================================================================================
+D1. SUCCESSFUL ORDER CREATION (201 Created + Location Header)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -H "Accept: application/json" -H "Idempotency-Key: idemp_a06_trans_001" -d '{...}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+X-User-Id: usr_customer_01
+Idempotency-Key: idemp_a06_trans_001
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "qty": 1
+    },
+    {
+      "itemId": "item_photo_gold",
+      "qty": 1
+    }
+  ],
+  "address": {
+    "line1": "Grand Ballroom, Palace Grounds",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "pincode": "380015"
+  },
+  "paymentMethod": "ESCROW_NETBANKING"
+}
+
+HTTP/1.1 201 Created
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 645
+content-type: application/json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"ec010c6c51116efd"
+keep-alive: timeout=5
+location: /orders/ord_479b8ee6493a
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: c0e43ca6-a895-4eba-a11a-7f6bc4399a18
+
+{
+  "id": "ord_479b8ee6493a",
+  "customerId": "usr_customer_01",
+  "status": "CREATED",
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "name": "Standard DJ Sound System & Console",
+      "qty": 1,
+      "pricePaise": 1000000,
+      "lineTotalPaise": 1000000
+    },
+    {
+      "itemId": "item_photo_gold",
+      "name": "Gold Wedding Photography & Drone",
+      "qty": 1,
+      "pricePaise": 2500000,
+      "lineTotalPaise": 2500000
+    }
+  ],
+  "address": {
+    "line1": "Grand Ballroom, Palace Grounds",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "pincode": "380015"
+  },
+  "notes": "",
+  "paymentMethod": "ESCROW_NETBANKING",
+  "totalPaise": 3500000,
+  "depositPaise": 1400000,
+  "createdAt": "2026-10-13T16:26:55.242Z",
+  "updatedAt": "2026-10-13T16:26:55.242Z",
+  "etag": "W/\"ec010c6c51116efd\""
+}
+
+
+================================================================================
+D2.1 FAILURE — EMPTY CART (422 Unprocessable Content / empty-cart)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -d '{"items": [], "address": "123 Main Street"}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Content-Type: application/json
+
+{
+  "items": [],
+  "address": "123 Main Street, Ahmedabad"
+}
+
+HTTP/1.1 422 Unprocessable Entity
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 315
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"13b-Zen5QjQgNYvcCSQYj3Rm/qVnEVA"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 4a0b3303-5f37-49d7-999c-af5bb27d44f6
+
+{
+  "type": "https://api.bookme.internal/errors/empty-cart",
+  "title": "Empty Cart",
+  "status": 422,
+  "detail": "Cannot create an order with an empty shopping cart. Please add at least one line item.",
+  "instance": "/orders",
+  "errors": [
+    {
+      "field": "items",
+      "message": "Items list cannot be empty. An order requires at least one item."
+    }
+  ]
+}
+
+
+================================================================================
+D2.2 FAILURE — INVALID QUANTITY (422 Unprocessable Content / validation-error)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -d '{"items": [{"itemId": "item_dj_basic", "qty": 0}], "address": "..."}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "qty": 0
+    }
+  ],
+  "address": "123 Main Street, Ahmedabad"
+}
+
+HTTP/1.1 422 Unprocessable Entity
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 313
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"139-PqVqKeXrsK+qdFxvk1WObQMhP8U"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 3bb71791-687f-445a-b0c7-d59011fa418f
+
+{
+  "type": "https://api.bookme.internal/errors/validation-error",
+  "title": "Unprocessable Content",
+  "status": 422,
+  "detail": "The order request failed validation with one or more invalid fields.",
+  "instance": "/orders",
+  "errors": [
+    {
+      "field": "items[0].qty",
+      "message": "Quantity must be greater than or equal to 1. Received: 0"
+    }
+  ]
+}
+
+
+================================================================================
+D2.3 FAILURE — FIELD-LEVEL VALIDATION REPORTING TWO INVALID FIELDS AT ONCE (422)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -d '{"items": [{"itemId": "item_dj_basic", "qty": -3}]}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "qty": -3
+    }
+  ]
+}
+
+HTTP/1.1 422 Unprocessable Entity
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 376
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"178-OVg8HQEGWNuX0lw0keq3AvgZ1ww"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 6dc9af26-e058-4969-8d8f-45ac42bddc77
+
+{
+  "type": "https://api.bookme.internal/errors/validation-error",
+  "title": "Unprocessable Content",
+  "status": 422,
+  "detail": "The order request failed validation with one or more invalid fields.",
+  "instance": "/orders",
+  "errors": [
+    {
+      "field": "items[0].qty",
+      "message": "Quantity must be greater than or equal to 1. Received: -3"
+    },
+    {
+      "field": "address",
+      "message": "Delivery address is required."
+    }
+  ]
+}
+
+
+================================================================================
+D2.4 FAILURE — UNKNOWN ORDER ID (404 Not Found / order-not-found)
+Command: curl -i -X GET http://localhost:4006/orders/ord_unknown_99999 -H "Accept: application/json"
+================================================================================
+GET /orders/ord_unknown_99999 HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+
+HTTP/1.1 404 Not Found
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 202
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"ca-oUhslKb094HLkot0YhezmS4yyR8"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 23226ce5-5376-45c5-bbde-81d048cf7b31
+
+{
+  "type": "https://api.bookme.internal/errors/order-not-found",
+  "title": "Order Not Found",
+  "status": 404,
+  "detail": "No order found with identifier 'ord_unknown_99999'.",
+  "instance": "/orders/ord_unknown_99999"
+}
+
+
+================================================================================
+D2.5 FAILURE — ITEM UNAVAILABLE (409 Conflict / item-unavailable)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -d '{"items": [{"itemId": "item_celebrity_performer", "qty": 1}], ...}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "itemId": "item_celebrity_performer",
+      "qty": 1
+    }
+  ],
+  "address": "Grand Ballroom, Palace Grounds"
+}
+
+HTTP/1.1 409 Conflict
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 342
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"156-QKEy3qa8YJttD3v3chovB/U2WHo"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 25e14090-86eb-412b-9c7d-6fd9aa561e14
+
+{
+  "type": "https://api.bookme.internal/errors/item-unavailable",
+  "title": "Item Unavailable",
+  "status": 409,
+  "detail": "Item 'Celebrity Vocalist Live Set' (item_celebrity_performer) is currently out of stock or capacity is exhausted.",
+  "instance": "/orders",
+  "itemId": "item_celebrity_performer",
+  "itemName": "Celebrity Vocalist Live Set",
+  "requestedQty": 1
+}
+
+
+================================================================================
+D2.6 FAILURE — PAYMENT DECLINED (402 Payment Required / payment-declined)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -d '{"items": [...], "paymentMethod": "DECLINE_TEST"}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "qty": 1
+    }
+  ],
+  "address": "Grand Ballroom, Palace Grounds",
+  "paymentMethod": "DECLINE_TEST"
+}
+
+HTTP/1.1 402 Payment Required
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 290
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"122-DoBa0hxJGFQl7sA9VZ7pFY2iERw"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 00cb7b98-9104-437f-8888-5d9369ab0778
+
+{
+  "type": "https://api.bookme.internal/errors/payment-declined",
+  "title": "Payment Declined",
+  "status": 402,
+  "detail": "The payment transaction was declined by the escrow gateway due to insufficient funds or risk flags.",
+  "instance": "/orders",
+  "paymentGatewayCode": "CARD_DECLINED_INSUFFICIENT_FUNDS"
+}
+
+
+================================================================================
+D2.7 FAILURE — ILLEGAL STATE TRANSITION (409 Conflict / illegal-transition)
+Command: curl -i -X PATCH http://localhost:4006/orders/ord_demo_delivered -H "Content-Type: application/json" -d '{"status": "CANCELLED"}'
+================================================================================
+PATCH /orders/ord_demo_delivered HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Content-Type: application/json
+
+{
+  "status": "CANCELLED"
+}
+
+HTTP/1.1 409 Conflict
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 302
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"12e-N3aRNCoUCA5qekAAHdkOD3bVDS4"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: f728d23c-8c80-443e-9e1a-bedaca9abc81
+
+{
+  "type": "https://api.bookme.internal/errors/illegal-transition",
+  "title": "Illegal State Transition",
+  "status": 409,
+  "detail": "Cannot transition order from 'DELIVERED' to 'CANCELLED'.",
+  "instance": "/orders/ord_demo_delivered",
+  "currentStatus": "DELIVERED",
+  "attemptedStatus": "CANCELLED",
+  "allowedTransitions": []
+}
+
+
+================================================================================
+D2.8 FAILURE — RATE LIMIT EXCEEDED (429 Too Many Requests + Retry-After: 60)
+Command: curl -i -X POST http://localhost:4006/orders/simulate/rate-limit
+================================================================================
+POST /orders/simulate/rate-limit HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+
+HTTP/1.1 429 Too Many Requests
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 278
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"116-Us9sqb/Dbyn8gJKMxDqBWJCAt4k"
+keep-alive: timeout=5
+retry-after: 60
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: f036e224-1a33-4dc6-8e76-bd0add0bb589
+
+{
+  "type": "https://api.bookme.internal/errors/rate-limited",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Client has exceeded the rate limit threshold (100 requests per minute). Retry allowed after 60 seconds.",
+  "instance": "/orders/simulate/rate-limit",
+  "retryAfterSeconds": 60
+}
+
+
+================================================================================
+D2.9 FAILURE — SERVICE UNAVAILABLE (503 Service Unavailable + Retry-After: 120)
+Command: curl -i -X POST http://localhost:4006/orders/simulate/outage
+================================================================================
+POST /orders/simulate/outage HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+
+HTTP/1.1 503 Service Unavailable
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 283
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"11b-D1nR/T+n1fx90eKiJ5AsFiTR1Ts"
+keep-alive: timeout=5
+retry-after: 120
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 0e2d7716-1009-46c0-9983-35429dcb39d7
+
+{
+  "type": "https://api.bookme.internal/errors/service-unavailable",
+  "title": "Service Temporarily Unavailable",
+  "status": 503,
+  "detail": "The orders service database connection pool is currently undergoing scheduled maintenance.",
+  "instance": "/orders/simulate/outage",
+  "retryAfterSeconds": 120
+}
+
+
+================================================================================
+D3.1 CONTENT NEGOTIATION — SUCCESSFUL XML REPRESENTATION (Accept: application/xml)
+Command: curl -i -X GET http://localhost:4006/orders/ord_479b8ee6493a -H "Accept: application/xml"
+================================================================================
+GET /orders/ord_479b8ee6493a HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/xml
+
+HTTP/1.1 200 OK
+access-control-allow-origin: *
+cache-control: private, max-age=60
+connection: keep-alive
+content-length: 892
+content-type: application/xml; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"ec010c6c51116efd"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: ee65389e-3adb-48a7-906a-bcb24e479750
+
+<?xml version="1.0" encoding="UTF-8"?>
+<order id="ord_479b8ee6493a">
+  <status>CREATED</status>
+  <customerId>usr_customer_01</customerId>
+  <totalPaise>3500000</totalPaise>
+  <depositPaise>1400000</depositPaise>
+  <currency>INR</currency>
+  <createdAt>2026-10-13T16:26:55.242Z</createdAt>
+  <updatedAt>2026-10-13T16:26:55.242Z</updatedAt>
+  <items>
+    <item>
+      <itemId>item_dj_basic</itemId>
+      <name>Standard DJ Sound System &amp; Console</name>
+      <qty>1</qty>
+      <pricePaise>1000000</pricePaise>
+    </item>
+    <item>
+      <itemId>item_photo_gold</itemId>
+      <name>Gold Wedding Photography &amp; Drone</name>
+      <qty>1</qty>
+      <pricePaise>2500000</pricePaise>
+    </item>
+  </items>
+    <address>
+      <line1>Grand Ballroom, Palace Grounds</line1>
+      <city>Ahmedabad</city>
+      <state>Gujarat</state>
+      <pincode>380015</pincode>
+    </address>
+</order>
+
+
+================================================================================
+D3.2 CONTENT NEGOTIATION — UNSUPPORTED FORMAT (406 Not Acceptable)
+Command: curl -i -X GET http://localhost:4006/orders/ord_479b8ee6493a -H "Accept: text/csv"
+================================================================================
+GET /orders/ord_479b8ee6493a HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: text/csv
+
+HTTP/1.1 406 Not Acceptable
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 245
+content-type: application/problem+json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"f5-lUJlnHU7WVEYMQQfOXUPbmTF91k"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: b7049512-d716-4d15-9180-b07749d801ed
+
+{
+  "type": "https://api.bookme.internal/errors/not-acceptable",
+  "title": "Not Acceptable",
+  "status": 406,
+  "detail": "The requested Accept format 'text/csv' is not supported. Use application/json or application/xml.",
+  "instance": "/orders/ord_479b8ee6493a"
+}
+
+
+================================================================================
+D4.1 REGRESSION CHECK — SAFE RETRY IDEMPOTENCY KEY REPLAY (201 Created Cached)
+Command: curl -i -X POST http://localhost:4006/orders -H "Content-Type: application/json" -H "Idempotency-Key: idemp_a06_trans_001" -d '{...}'
+================================================================================
+POST /orders HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+Accept: application/json
+Idempotency-Key: idemp_a06_trans_001
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "qty": 1
+    },
+    {
+      "itemId": "item_photo_gold",
+      "qty": 1
+    }
+  ],
+  "address": {
+    "line1": "Grand Ballroom, Palace Grounds",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "pincode": "380015"
+  },
+  "paymentMethod": "ESCROW_NETBANKING"
+}
+
+HTTP/1.1 201 Created
+access-control-allow-origin: *
+connection: keep-alive
+content-length: 645
+content-type: application/json; charset=utf-8
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"285-V9WGu/jnd4pR2enPk4KjPt20lQw"
+keep-alive: timeout=5
+location: /orders/ord_479b8ee6493a
+x-cache-lookup: HIT
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 7bb3b313-466b-487f-939e-06d5a5ce55ca
+
+{
+  "id": "ord_479b8ee6493a",
+  "customerId": "usr_customer_01",
+  "status": "CREATED",
+  "items": [
+    {
+      "itemId": "item_dj_basic",
+      "name": "Standard DJ Sound System & Console",
+      "qty": 1,
+      "pricePaise": 1000000,
+      "lineTotalPaise": 1000000
+    },
+    {
+      "itemId": "item_photo_gold",
+      "name": "Gold Wedding Photography & Drone",
+      "qty": 1,
+      "pricePaise": 2500000,
+      "lineTotalPaise": 2500000
+    }
+  ],
+  "address": {
+    "line1": "Grand Ballroom, Palace Grounds",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "pincode": "380015"
+  },
+  "notes": "",
+  "paymentMethod": "ESCROW_NETBANKING",
+  "totalPaise": 3500000,
+  "depositPaise": 1400000,
+  "createdAt": "2026-10-13T16:26:55.242Z",
+  "updatedAt": "2026-10-13T16:26:55.242Z",
+  "etag": "W/\"ec010c6c51116efd\""
+}
+
+
+================================================================================
+D4.2 REGRESSION CHECK — CONDITIONAL GET (304 Not Modified, Empty Body)
+Command: curl -i -X GET http://localhost:4006/orders/ord_479b8ee6493a -H 'If-None-Match: W/"ec010c6c51116efd"'
+================================================================================
+GET /orders/ord_479b8ee6493a HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+If-None-Match: W/"ec010c6c51116efd"
+
+HTTP/1.1 304 Not Modified
+access-control-allow-origin: *
+cache-control: private, max-age=60
+connection: keep-alive
+date: Tue, 13 Oct 2026 16:26:55 GMT
+etag: W/"ec010c6c51116efd"
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: 8bfe33fc-6341-4877-80ec-b34fb1d50064
+
+
+================================================================================
+D4.3 ORDER CANCELLATION — DELETE /orders/:id (204 No Content)
+Command: curl -i -X DELETE http://localhost:4006/orders/ord_479b8ee6493a
+================================================================================
+DELETE /orders/ord_479b8ee6493a HTTP/1.1
+Host: localhost:4006
+User-Agent: curl/8.4.0
+
+HTTP/1.1 204 No Content
+access-control-allow-origin: *
+connection: keep-alive
+date: Tue, 13 Oct 2026 16:26:55 GMT
+keep-alive: timeout=5
+x-content-type-options: nosniff
+x-powered-by: Express
+x-ratelimit-limit: 100
+x-ratelimit-remaining: 98
+x-request-id: cd139aa2-a3a6-41d4-9b33-ea101f75eb1a
+

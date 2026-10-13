@@ -1,0 +1,458 @@
+openapi: 3.1.0
+info:
+  title: BookMe Orders Service API
+  version: 1.0.0
+  description: >
+    CS543 Web Services · Assignment 6 of 12: Honest Responses — Status Codes, Errors & Validation.
+    Provides standard RESTful HTTP status codes, RFC 7807 Problem Details error representations,
+    field-level validation (422), content negotiation (JSON and XML), and safe retry handling.
+servers:
+  - url: http://localhost:4006
+    description: Local Orders Service
+  - url: http://localhost:4003/orders
+    description: Integrated Gateway Orders Path
+
+paths:
+  /orders:
+    post:
+      summary: Create a new order
+      description: >
+        Creates an order from line items and delivery address. Enforces pre-flight field validation,
+        inventory checks, payment simulation, and RFC 7807 Problem Details on failure.
+      operationId: createOrder
+      headers:
+        Idempotency-Key:
+          schema:
+            type: string
+          description: Safe retry idempotency key. Replay returns cached 201 response.
+        Accept:
+          schema:
+            type: string
+            default: application/json
+          description: Client format preference. Supports application/json and application/xml.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order successfully created.
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /orders/ord_8fa21b7c
+              description: Canonical URI pointing to the newly created order resource.
+            ETag:
+              schema:
+                type: string
+                example: W/"b2f1981a"
+              description: Entity tag fingerprint for caching and optimistic locking.
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: nosniff
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                example: 98
+          content:
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Order'
+            application/xml; charset=utf-8:
+              schema:
+                type: string
+                example: '<?xml version="1.0" encoding="UTF-8"?><order id="ord_8fa21b7c">...</order>'
+        '402':
+          description: Payment declined by the escrow gateway (payment-declined).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '406':
+          description: Client requested an unsupported representation via Accept header (not-acceptable).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Item unavailable or capacity exhausted (item-unavailable).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Field-level validation failed or empty shopping cart (empty-cart / validation-error).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Client rate limit exceeded (rate-limited).
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 60
+              description: Number of seconds the client must wait before retrying.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '503':
+          description: Orders subsystem undergoing temporary maintenance (service-unavailable).
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                example: 120
+              description: Number of seconds before service is expected to recover.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+    get:
+      summary: List all orders
+      description: Returns orders matching customer context.
+      operationId: listOrders
+      parameters:
+        - name: Accept
+          in: header
+          required: false
+          schema:
+            type: string
+            default: application/json
+      responses:
+        '200':
+          description: List of orders retrieved successfully.
+          content:
+            application/json; charset=utf-8:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  total:
+                    type: integer
+            application/xml; charset=utf-8:
+              schema:
+                type: string
+        '406':
+          description: Not Acceptable format.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /orders/{id}:
+    get:
+      summary: Get order by ID
+      description: Fetches full order details. Supports conditional GET via ETag.
+      operationId: getOrderById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique order identifier
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+          description: ETag value from previous read. Returns 304 if unchanged.
+        - name: Accept
+          in: header
+          required: false
+          schema:
+            type: string
+            default: application/json
+      responses:
+        '200':
+          description: Order details.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                example: private, max-age=60
+          content:
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Order'
+            application/xml; charset=utf-8:
+              schema:
+                type: string
+        '304':
+          description: Not Modified. Resource unchanged since specified ETag. Zero-byte body.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+        '404':
+          description: Order not found (order-not-found).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '406':
+          description: Format requested in Accept cannot be generated.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+    patch:
+      summary: Update order state
+      description: Transitions order lifecycle or updates delivery attributes with optimistic locking.
+      operationId: patchOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Precondition ETag. Must match current state or returns 412.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchOrderRequest'
+      responses:
+        '200':
+          description: Order successfully updated.
+          content:
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Illegal status transition attempted (illegal-transition).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '412':
+          description: Precondition Failed (stale ETag provided).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Validation error on patch attributes.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+    delete:
+      summary: Cancel order
+      description: Soft-cancels an active order. Cannot cancel orders that are already DELIVERED.
+      operationId: deleteOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Order cancelled successfully. No response body.
+        '404':
+          description: Order not found.
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Illegal cancellation attempted on already DELIVERED order (illegal-transition).
+          content:
+            application/problem+json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required:
+        - items
+        - address
+      properties:
+        items:
+          type: array
+          minItems: 1
+          description: Non-empty list of ordered items.
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+        address:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Address'
+          description: Customer event/delivery venue address. Required.
+        paymentMethod:
+          type: string
+          enum: [ESCROW_NETBANKING, ESCROW_UPI, CARD, DECLINE_TEST]
+          default: ESCROW_NETBANKING
+        notes:
+          type: string
+
+    OrderItemInput:
+      type: object
+      required:
+        - itemId
+        - qty
+      properties:
+        itemId:
+          type: string
+          example: item_dj_basic
+        qty:
+          type: integer
+          minimum: 1
+          example: 1
+          description: Quantity of item. Must be integer >= 1.
+
+    PatchOrderRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [CREATED, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+        notes:
+          type: string
+
+    Address:
+      type: object
+      properties:
+        line1:
+          type: string
+          example: Grand Ballroom, Palace Grounds
+        city:
+          type: string
+          example: Ahmedabad
+        state:
+          type: string
+          example: Gujarat
+        pincode:
+          type: string
+          example: '380015'
+
+    OrderItem:
+      type: object
+      properties:
+        itemId:
+          type: string
+        name:
+          type: string
+        qty:
+          type: integer
+        pricePaise:
+          type: integer
+        lineTotalPaise:
+          type: integer
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          example: ord_8fa21b7c
+        customerId:
+          type: string
+          example: usr_customer_01
+        status:
+          type: string
+          enum: [CREATED, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        address:
+          $ref: '#/components/schemas/Address'
+        totalPaise:
+          type: integer
+          example: 3500000
+        depositPaise:
+          type: integer
+          example: 1400000
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ValidationError:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          example: items[0].qty
+        message:
+          type: string
+          example: Quantity must be greater than or equal to 1. Received: 0
+
+    ProblemDetails:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://api.bookme.internal/errors/validation-error
+          description: Stable URI reference identifying the problem type.
+        title:
+          type: string
+          example: Unprocessable Content
+          description: Short, human-readable summary of problem.
+        status:
+          type: integer
+          example: 422
+          description: HTTP status code generated by server.
+        detail:
+          type: string
+          example: The order request failed validation with one or more invalid fields.
+          description: Human-readable explanation specific to this occurrence.
+        instance:
+          type: string
+          example: /orders
+          description: URI reference identifying specific occurrence of the problem.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          description: List of field-level errors when status is 422.
