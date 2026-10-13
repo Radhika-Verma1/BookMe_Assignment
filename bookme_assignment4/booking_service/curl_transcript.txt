@@ -1,0 +1,94 @@
+$ 1. successful create
+HTTP/1.1 201 CREATED
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/json
+Content-Length: 279
+Location: /bookings/bk_0001
+Connection: close
+
+{"amount_inr":50000,"created_at":"2026-10-13T14:48:45.506716+00:00","event_id":"ev_1","id":"bk_0001","links":{"cancellation":"/bookings/bk_0001/cancellation","self":"/bookings/bk_0001"},"package_id":"pk_2","service_date":"2030-12-01","status":"pending_vendor","vendor_id":"v_9"}
+
+
+$ 2. same request, same key -> original
+HTTP/1.1 201 CREATED
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/json
+Content-Length: 279
+Location: /bookings/bk_0001
+Idempotent-Replayed: true
+Connection: close
+
+{"amount_inr":50000,"created_at":"2026-10-13T14:48:45.506716+00:00","event_id":"ev_1","id":"bk_0001","links":{"cancellation":"/bookings/bk_0001/cancellation","self":"/bookings/bk_0001"},"package_id":"pk_2","service_date":"2030-12-01","status":"pending_vendor","vendor_id":"v_9"}
+
+
+$ 3. malformed body
+HTTP/1.1 400 BAD REQUEST
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/problem+json
+Content-Length: 141
+Connection: close
+
+{"detail":"Missing field 'event_id'.","status":400,"title":"Malformed request body","type":"https://bookme.example/problems/malformed-body"}
+
+
+$ 4. missing resource
+HTTP/1.1 404 NOT FOUND
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/problem+json
+Content-Length: 135
+Connection: close
+
+{"detail":"No booking with id 'bk_9999'.","status":404,"title":"Booking not found","type":"https://bookme.example/problems/not-found"}
+
+
+$ 5. confirm (200)
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/json
+Content-Length: 274
+Connection: close
+
+{"amount_inr":50000,"created_at":"2026-10-13T14:48:45.506716+00:00","event_id":"ev_1","id":"bk_0001","links":{"cancellation":"/bookings/bk_0001/cancellation","self":"/bookings/bk_0001"},"package_id":"pk_2","service_date":"2030-12-01","status":"confirmed","vendor_id":"v_9"}
+
+
+$ 6. state conflict: confirm again
+HTTP/1.1 409 CONFLICT
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/problem+json
+Content-Length: 169
+Connection: close
+
+{"detail":"Booking is 'confirmed', only pending_vendor can be confirmed.","status":409,"title":"State conflict","type":"https://bookme.example/problems/state-conflict"}
+
+
+$ 7. filtered list
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/json
+Content-Length: 296
+Connection: close
+
+{"count":1,"items":[{"amount_inr":50000,"created_at":"2026-10-13T14:48:45.506716+00:00","event_id":"ev_1","id":"bk_0001","links":{"cancellation":"/bookings/bk_0001/cancellation","self":"/bookings/bk_0001"},"package_id":"pk_2","service_date":"2030-12-01","status":"confirmed","vendor_id":"v_9"}]}
+
+
+$ 8. cancellation (202)
+HTTP/1.1 202 ACCEPTED
+Server: Werkzeug/3.1.7 Python/3.12.3
+Date: Tue, 13 Oct 2026 14:48:45 GMT
+Content-Type: application/json
+Content-Length: 341
+Location: /bookings/bk_0001
+Connection: close
+
+{"amount_inr":50000,"cancellation":{"reason":"date changed","refund_status":"pending"},"created_at":"2026-10-13T14:48:45.506716+00:00","event_id":"ev_1","id":"bk_0001","links":{"cancellation":"/bookings/bk_0001/cancellation","self":"/bookings/bk_0001"},"package_id":"pk_2","service_date":"2030-12-01","status":"cancelled","vendor_id":"v_9"}
+
+
+$ 9. domain refusal (vendor busy on same date)
+/bin/sh: 205: Bad substitution

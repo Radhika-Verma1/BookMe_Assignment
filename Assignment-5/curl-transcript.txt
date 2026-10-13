@@ -1,0 +1,572 @@
+======================================================================
+TEST 1: Successful Create Returning 201 Created and Location Header
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> POST /events HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Content-Type: application/json
+> Accept: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+> Idempotency-Key: idemp-assignment5-key-001
+>
+> {"name":"Alka Wedding Sangeet Celebration","eventType":"Wedding","dateFrom":"2026-12-20T18:00:00Z","dateTo":"2026-12-20T23:00:00Z","city":"Ahmedabad","venueLocation":{"address":"Grand Ballroom, Palace Grounds","city":"Ahmedabad","state":"Gujarat","postalCode":"380015","latitude":23.0225,"longitude":72.5714},"guestCount":350,"budgetPaise":50000000}
+< HTTP/1.1 201 Created
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: 18b748a0-9ef0-471d-be8c-c235150c12c4
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< location: /events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa
+< content-type: application/json; charset=utf-8
+< content-length: 1017
+< etag: W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "id": "d79a69d3-6aea-4039-b449-a7d9d04cb4fa",
+  "customerId": "usr_customer_01",
+  "name": "Alka Wedding Sangeet Celebration",
+  "dateFrom": "2026-12-20",
+  "dateTo": "2026-12-20",
+  "venueLocation": {
+    "address": "Grand Ballroom, Palace Grounds",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "postalCode": "380015",
+    "latitude": 23.0225,
+    "longitude": 72.5714
+  },
+  "guestCount": 350,
+  "status": "PLANNING",
+  "createdAt": "2026-10-13T15:12:08.182Z",
+  "customer_id": "usr_customer_01",
+  "event_type": "Wedding",
+  "event_date": "2026-12-20",
+  "budget": 500000,
+  "guest_count": 350,
+  "city": "Ahmedabad",
+  "budget_items": [
+    {
+      "category": "Venue & Catering",
+      "planned_amount": 250000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Photography & Video",
+      "planned_amount": 75000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Decoration & Floral",
+      "planned_amount": 75000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Music & Entertainment",
+      "planned_amount": 50000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Makeup & Styling",
+      "planned_amount": 25000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Miscellaneous",
+      "planned_amount": 25000,
+      "actual_amount": 0
+    }
+  ],
+  "checklist_count": 8
+}
+
+======================================================================
+TEST 2: Repeat of the Same Create with Same Idempotency-Key (Safe Retry)
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> POST /events HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Content-Type: application/json
+> Accept: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+> Idempotency-Key: idemp-assignment5-key-001
+>
+> {"name":"Alka Wedding Sangeet Celebration","eventType":"Wedding","dateFrom":"2026-12-20T18:00:00Z","dateTo":"2026-12-20T23:00:00Z","city":"Ahmedabad","venueLocation":{"address":"Grand Ballroom, Palace Grounds","city":"Ahmedabad","state":"Gujarat","postalCode":"380015","latitude":23.0225,"longitude":72.5714},"guestCount":350,"budgetPaise":50000000}
+< HTTP/1.1 201 Created
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: b7a07876-01bb-4f6d-bcf6-bc91b22722a9
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< x-cache-lookup: HIT
+< content-type: application/json; charset=utf-8
+< content-length: 1017
+< etag: W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "id": "d79a69d3-6aea-4039-b449-a7d9d04cb4fa",
+  "customerId": "usr_customer_01",
+  "name": "Alka Wedding Sangeet Celebration",
+  "dateFrom": "2026-12-20",
+  "dateTo": "2026-12-20",
+  "venueLocation": {
+    "address": "Grand Ballroom, Palace Grounds",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "postalCode": "380015",
+    "latitude": 23.0225,
+    "longitude": 72.5714
+  },
+  "guestCount": 350,
+  "status": "PLANNING",
+  "createdAt": "2026-10-13T15:12:08.182Z",
+  "customer_id": "usr_customer_01",
+  "event_type": "Wedding",
+  "event_date": "2026-12-20",
+  "budget": 500000,
+  "guest_count": 350,
+  "city": "Ahmedabad",
+  "budget_items": [
+    {
+      "category": "Venue & Catering",
+      "planned_amount": 250000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Photography & Video",
+      "planned_amount": 75000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Decoration & Floral",
+      "planned_amount": 75000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Music & Entertainment",
+      "planned_amount": 50000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Makeup & Styling",
+      "planned_amount": 25000,
+      "actual_amount": 0
+    },
+    {
+      "category": "Miscellaneous",
+      "planned_amount": 25000,
+      "actual_amount": 0
+    }
+  ],
+  "checklist_count": 8
+}
+
+======================================================================
+TEST 3A: Single Resource Read Fetching ETag & Cache-Control
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> GET /events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Accept: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+>
+< HTTP/1.1 200 OK
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: 66e6f110-2a59-45ec-b31a-0b41ed1dc5a0
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< etag: W/"a0fa49a3267d7568"
+< cache-control: private, max-age=60
+< content-type: application/json; charset=utf-8
+< content-length: 525
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "id": "d79a69d3-6aea-4039-b449-a7d9d04cb4fa",
+  "customerId": "usr_customer_01",
+  "name": "Alka Wedding Sangeet Celebration",
+  "dateFrom": "2026-12-20",
+  "dateTo": "2026-12-20",
+  "venueLocation": {
+    "address": "Ahmedabad",
+    "city": "Ahmedabad",
+    "latitude": 23.0225,
+    "longitude": 72.5714
+  },
+  "guestCount": 350,
+  "status": "PLANNING",
+  "createdAt": "2026-10-13T15:12:08.182Z",
+  "customer_id": "usr_customer_01",
+  "event_type": "Wedding",
+  "event_date": "2026-12-20",
+  "budget": 500000,
+  "guest_count": 350,
+  "city": "Ahmedabad",
+  "budget_items": [],
+  "checklist_count": 0,
+  "days_left": 68
+}
+
+======================================================================
+TEST 3B: Conditional GET with If-None-Match Returning 304 Not Modified
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> GET /events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Accept: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+> If-None-Match: W/"a0fa49a3267d7568"
+>
+< HTTP/1.1 304 Not Modified
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: c7884afb-e0f3-416d-8ba1-02aeae93f10c
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< etag: W/"a0fa49a3267d7568"
+< cache-control: private, max-age=60
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+* (Empty response body)
+
+======================================================================
+TEST 4: Conditional Write with Stale If-Match Returning 412 Precondition Failed
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> PATCH /events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Content-Type: application/json
+> Accept: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+> If-Match: W/"stale_invalid_etag_999"
+>
+> {"guestCount":400}
+< HTTP/1.1 412 Precondition Failed
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: d115c699-ceec-4d67-b66c-349c5748b6ef
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< content-type: application/json; charset=utf-8
+< content-length: 372
+< etag: W/"174-5+o3N/S6vxm2nEBJu6BQzppV9Lg"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "code": "PRECONDITION_FAILED",
+  "message": "Precondition Failed: Resource representation has changed",
+  "details": [],
+  "traceId": "d115c699-ceec-4d67-b66c-349c5748b6ef",
+  "error": {
+    "code": "PRECONDITION_FAILED",
+    "message": "Precondition Failed: Resource representation has changed",
+    "details": [],
+    "timestamp": "2026-10-13T15:12:08.593Z",
+    "requestId": "d115c699-ceec-4d67-b66c-349c5748b6ef"
+  }
+}
+
+======================================================================
+TEST 5: Malformed Schema Request Returning 400 Bad Request
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> POST /events HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Content-Type: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+>
+> {"name":""}
+< HTTP/1.1 400 Bad Request
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: a8be2fa8-54e4-41e1-9503-b22300b3c8e3
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< content-type: application/json; charset=utf-8
+< content-length: 2044
+< etag: W/"7fc-gcdnczqOjGSxSXxqkAeYDfIrjVI"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "details": [
+    {
+      "field": "dateFrom",
+      "issue": "must have required property 'dateFrom'",
+      "rule": "required"
+    },
+    {
+      "field": "dateTo",
+      "issue": "must have required property 'dateTo'",
+      "rule": "required"
+    },
+    {
+      "field": "venueLocation",
+      "issue": "must have required property 'venueLocation'",
+      "rule": "required"
+    },
+    {
+      "field": "guestCount",
+      "issue": "must have required property 'guestCount'",
+      "rule": "required"
+    },
+    {
+      "field": "event_type",
+      "issue": "must have required property 'event_type'",
+      "rule": "required"
+    },
+    {
+      "field": "event_date",
+      "issue": "must have required property 'event_date'",
+      "rule": "required"
+    },
+    {
+      "field": "budget",
+      "issue": "must have required property 'budget'",
+      "rule": "required"
+    },
+    {
+      "field": "guest_count",
+      "issue": "must have required property 'guest_count'",
+      "rule": "required"
+    },
+    {
+      "field": "root",
+      "issue": "must match a schema in anyOf",
+      "rule": "anyOf"
+    },
+    {
+      "field": "name",
+      "issue": "must NOT have fewer than 1 characters",
+      "rule": "minLength"
+    }
+  ],
+  "traceId": "a8be2fa8-54e4-41e1-9503-b22300b3c8e3",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "dateFrom",
+        "issue": "must have required property 'dateFrom'",
+        "rule": "required"
+      },
+      {
+        "field": "dateTo",
+        "issue": "must have required property 'dateTo'",
+        "rule": "required"
+      },
+      {
+        "field": "venueLocation",
+        "issue": "must have required property 'venueLocation'",
+        "rule": "required"
+      },
+      {
+        "field": "guestCount",
+        "issue": "must have required property 'guestCount'",
+        "rule": "required"
+      },
+      {
+        "field": "event_type",
+        "issue": "must have required property 'event_type'",
+        "rule": "required"
+      },
+      {
+        "field": "event_date",
+        "issue": "must have required property 'event_date'",
+        "rule": "required"
+      },
+      {
+        "field": "budget",
+        "issue": "must have required property 'budget'",
+        "rule": "required"
+      },
+      {
+        "field": "guest_count",
+        "issue": "must have required property 'guest_count'",
+        "rule": "required"
+      },
+      {
+        "field": "root",
+        "issue": "must match a schema in anyOf",
+        "rule": "anyOf"
+      },
+      {
+        "field": "name",
+        "issue": "must NOT have fewer than 1 characters",
+        "rule": "minLength"
+      }
+    ],
+    "timestamp": "2026-10-13T15:12:08.603Z",
+    "requestId": "a8be2fa8-54e4-41e1-9503-b22300b3c8e3"
+  }
+}
+
+======================================================================
+TEST 6: Missing Resource Returning 404 Not Found
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> GET /events/evt_non_existent_99999 HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Accept: application/json
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+>
+< HTTP/1.1 404 Not Found
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: 861a3d49-112e-480d-b5f8-f38844b98831
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< content-type: application/json; charset=utf-8
+< content-length: 318
+< etag: W/"13e-yG8iTExf+/ubGF4A/ybWOcr5VXg"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "code": "NOT_FOUND",
+  "message": "Event not found: evt_non_existent_99999",
+  "details": [],
+  "traceId": "861a3d49-112e-480d-b5f8-f38844b98831",
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Event not found: evt_non_existent_99999",
+    "details": [],
+    "timestamp": "2026-10-13T15:12:08.626Z",
+    "requestId": "861a3d49-112e-480d-b5f8-f38844b98831"
+  }
+}
+
+======================================================================
+TEST 7: Protected Request Without Token Returning 401 Unauthorized
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> POST /events HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Content-Type: application/json
+>
+> {"name":"Unauthorized Event"}
+< HTTP/1.1 401 Unauthorized
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: 1e99a64e-c36f-494e-8828-f0b7653ca62d
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< content-type: application/json; charset=utf-8
+< content-length: 384
+< etag: W/"180-AlgLZJFPNYCZvitjCQaa1nT4xtE"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "code": "UNAUTHORIZED",
+  "message": "Authentication required",
+  "details": [
+    {
+      "issue": "Missing authentication credentials"
+    }
+  ],
+  "traceId": "1e99a64e-c36f-494e-8828-f0b7653ca62d",
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required",
+    "details": [
+      {
+        "issue": "Missing authentication credentials"
+      }
+    ],
+    "timestamp": "2026-10-13T15:12:08.648Z",
+    "requestId": "1e99a64e-c36f-494e-8828-f0b7653ca62d"
+  }
+}
+
+======================================================================
+TEST 8: OPTIONS Preflight Returning Allow Header
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> OPTIONS /events HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+>
+< HTTP/1.1 204 No Content
+< x-powered-by: Express
+< access-control-allow-origin: *
+< access-control-allow-methods: GET,HEAD,PUT,PATCH,POST,DELETE
+< vary: Access-Control-Request-Headers
+< content-length: 0
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+* (Empty response body)
+
+======================================================================
+TEST 9: Content Negotiation Unsupported Media Returning 406 Not Acceptable
+======================================================================
+
+* Connected to localhost (127.0.0.1) port 4003
+> GET /events HTTP/1.1
+> Host: localhost:4003
+> User-Agent: curl/8.4.0
+> Accept: application/xml
+> X-User-Id: usr_customer_01
+> X-User-Role: customer
+>
+< HTTP/1.1 406 Not Acceptable
+< x-powered-by: Express
+< access-control-allow-origin: *
+< x-request-id: 62c20404-0a4b-4621-b41e-6d09091f4a2d
+< x-content-type-options: nosniff
+< x-ratelimit-limit: 100
+< x-ratelimit-remaining: 99
+< content-type: application/json; charset=utf-8
+< content-length: 85
+< etag: W/"55-o4tcMESy8U9IGVcbw3n9b3VIUTo"
+< date: Tue, 13 Oct 2026 15:12:08 GMT
+< connection: close
+<
+{
+  "code": "NOT_ACCEPTABLE",
+  "message": "Not Acceptable: only application/json supported"
+}
+

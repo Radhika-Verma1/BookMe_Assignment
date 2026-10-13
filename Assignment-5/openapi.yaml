@@ -1,0 +1,250 @@
+openapi: "3.1.0"
+info:
+  title: BookMe Event Booking Service API
+  version: "1.0.0"
+  description: HTTP Methods, Headers, Conditional Requests, ETag, and Safe Retries Specification for Assignment 5.
+servers:
+  - url: http://localhost:4003
+    description: Local Development Server
+paths:
+  /events:
+    options:
+      summary: OPTIONS discovery and CORS preflight
+      operationId: optionsEvents
+      responses:
+        "204":
+          description: No Content with Allow header
+          headers:
+            Allow:
+              schema:
+                type: string
+                example: "GET, POST, OPTIONS"
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                example: "*"
+
+    post:
+      summary: Create a new event planner resource (Non-idempotent without key)
+      operationId: createEvent
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: "idemp-assignment5-key-001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - dateFrom
+                - dateTo
+                - venueLocation
+                - guestCount
+              properties:
+                name:
+                  type: string
+                  example: "Alka Wedding Sangeet Celebration"
+                eventType:
+                  type: string
+                  example: "Wedding"
+                dateFrom:
+                  type: string
+                  format: date-time
+                dateTo:
+                  type: string
+                  format: date-time
+                venueLocation:
+                  type: object
+                  properties:
+                    address:
+                      type: string
+                    city:
+                      type: string
+                guestCount:
+                  type: integer
+                  example: 350
+                budgetPaise:
+                  type: integer
+                  example: 50000000
+      responses:
+        "201":
+          description: Event created successfully
+          headers:
+            Location:
+              schema:
+                type: string
+                example: "/events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa"
+            ETag:
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              schema:
+                type: string
+                example: "100"
+            X-RateLimit-Remaining:
+              schema:
+                type: string
+                example: "99"
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: "nosniff"
+        "400":
+          description: Bad Request (Malformed JSON or Schema Error)
+        "401":
+          description: Unauthorized (Missing or invalid identity credentials)
+
+    get:
+      summary: List customer events with filtering, sorting, and pagination
+      operationId: listEvents
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PLANNING, CONFIRMED, COMPLETED, CANCELLED]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: "desc"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Filtered event list
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: "application/json"
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: "nosniff"
+        "406":
+          description: Not Acceptable (Unsupported representation requested)
+
+  /events/{id}:
+    options:
+      summary: OPTIONS discovery on single event resource
+      operationId: optionsEventById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+          headers:
+            Allow:
+              schema:
+                type: string
+                example: "GET, PUT, PATCH, DELETE, OPTIONS"
+
+    get:
+      summary: Retrieve single event with conditional caching (ETag & If-None-Match)
+      operationId: getEventById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+            example: 'W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"'
+      responses:
+        "200":
+          description: Event representation
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                example: "private, max-age=60"
+        "304":
+          description: Not Modified (Representation matches If-None-Match, empty body)
+        "404":
+          description: Not Found
+
+    patch:
+      summary: Partially update event with concurrency control (If-Match)
+      operationId: updateEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: false
+          schema:
+            type: string
+            example: 'W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                guestCount:
+                  type: integer
+      responses:
+        "200":
+          description: Event updated successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+        "412":
+          description: Precondition Failed (Supplied If-Match ETag is stale)
+        "404":
+          description: Not Found
+
+    delete:
+      summary: Cancel / Delete event (Idempotent mutation)
+      operationId: cancelEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Event cancelled
+        "404":
+          description: Not Found

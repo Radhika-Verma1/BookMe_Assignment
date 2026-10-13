@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:pay="http://securepay-gateway.in/payment/v1">
+  <soap:Header>
+    <pay:MerchantCredentials>
+      <pay:merchantId>BOOKME-MERCH-1042</pay:merchantId>
+      <pay:apiKey>sk_live_8f3a91c2d47e</pay:apiKey>
+      <pay:timestamp>2026-10-13T10:42:15Z</pay:timestamp>
+    </pay:MerchantCredentials>
+  </soap:Header>
+  <soap:Body>
+    <pay:ChargeBookingRequest>
+      <pay:merchantOrderId>BKM-2026-000451</pay:merchantOrderId>
+      <pay:amount>45000.00</pay:amount>
+      <pay:currency>INR</pay:currency>
+      <pay:paymentToken>tok_4fA9xQ2LmB7cZ81d</pay:paymentToken>
+      <pay:customerEmail>riya.patel@example.com</pay:customerEmail>
+      <pay:description>BookMe booking BKM-2026-000451 - Wedding photography package (advance)</pay:description>
+    </pay:ChargeBookingRequest>
+  </soap:Body>
+</soap:Envelope>

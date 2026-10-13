@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  partner.wsdl - SecurePay Gateway (external SOAP payment partner) as consumed by BookMe.
+  Style: document/literal, SOAP 1.1 over HTTP.
+-->
+<wsdl:definitions name="PaymentGatewayService"
+    targetNamespace="http://securepay-gateway.in/payment/v1"
+    xmlns:tns="http://securepay-gateway.in/payment/v1"
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <!-- 1. TYPES : the XML Schema for every payload -->
+  <wsdl:types>
+    <xsd:schema targetNamespace="http://securepay-gateway.in/payment/v1"
+                elementFormDefault="qualified">
+
+      <!-- SOAP Header: merchant credentials -->
+      <xsd:element name="MerchantCredentials">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="merchantId" type="xsd:string"/>
+            <xsd:element name="apiKey"     type="xsd:string"/>
+            <xsd:element name="timestamp"  type="xsd:dateTime"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- SOAP Body: request -->
+      <xsd:element name="ChargeBookingRequest">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="merchantOrderId" type="xsd:string"/>
+            <xsd:element name="amount"          type="xsd:decimal"/>
+            <xsd:element name="currency"        type="xsd:string"/>
+            <xsd:element name="paymentToken"    type="xsd:string"/>
+            <xsd:element name="customerEmail"   type="xsd:string"/>
+            <xsd:element name="description"     type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- SOAP Body: success response -->
+      <xsd:element name="ChargeBookingResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="transactionId" type="xsd:string"/>
+            <xsd:element name="status"        type="xsd:string"/>
+            <xsd:element name="authCode"      type="xsd:string"/>
+            <xsd:element name="amount"        type="xsd:decimal"/>
+            <xsd:element name="currency"      type="xsd:string"/>
+            <xsd:element name="processedAt"   type="xsd:dateTime"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Fault detail -->
+      <xsd:element name="PaymentFault">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="errorCode"        type="xsd:string"/>
+            <xsd:element name="errorMessage"     type="xsd:string"/>
+            <xsd:element name="retryable"        type="xsd:boolean"/>
+            <xsd:element name="gatewayReference" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </wsdl:types>
+
+  <!-- 2. MESSAGES : what travels on the wire -->
+  <wsdl:message name="ChargeBookingInput">
+    <wsdl:part name="credentials" element="tns:MerchantCredentials"/>
+    <wsdl:part name="parameters"  element="tns:ChargeBookingRequest"/>
+  </wsdl:message>
+  <wsdl:message name="ChargeBookingOutput">
+    <wsdl:part name="parameters" element="tns:ChargeBookingResponse"/>
+  </wsdl:message>
+  <wsdl:message name="PaymentFaultMessage">
+    <wsdl:part name="fault" element="tns:PaymentFault"/>
+  </wsdl:message>
+
+  <!-- 3. PORTTYPE : the abstract interface (operations) -->
+  <wsdl:portType name="PaymentGatewayPortType">
+    <wsdl:operation name="ChargeBooking">
+      <wsdl:input  message="tns:ChargeBookingInput"/>
+      <wsdl:output message="tns:ChargeBookingOutput"/>
+      <wsdl:fault  name="PaymentFault" message="tns:PaymentFaultMessage"/>
+    </wsdl:operation>
+  </wsdl:portType>
+
+  <!-- 4. BINDING : SOAP 1.1 over HTTP, document/literal -->
+  <wsdl:binding name="PaymentGatewaySoapBinding" type="tns:PaymentGatewayPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="ChargeBooking">
+      <soap:operation soapAction="http://securepay-gateway.in/payment/v1/ChargeBooking"/>
+      <wsdl:input>
+        <soap:header message="tns:ChargeBookingInput" part="credentials" use="literal"/>
+        <soap:body parts="parameters" use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="PaymentFault">
+        <soap:fault name="PaymentFault" use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+  </wsdl:binding>
+
+  <!-- 5/6. SERVICE + PORT : where the service lives -->
+  <wsdl:service name="PaymentGatewayService">
+    <wsdl:documentation>SecurePay card-payment gateway used by BookMe Payment Service.</wsdl:documentation>
+    <wsdl:port name="PaymentGatewayPort" binding="tns:PaymentGatewaySoapBinding">
+      <soap:address location="https://soap.securepay-gateway.in/ws/payments/v1"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:pay="http://securepay-gateway.in/payment/v1">
+  <soap:Body>
+    <soap:Fault>
+      <faultcode>soap:Client</faultcode>
+      <faultstring>Card declined by issuing bank</faultstring>
+      <faultactor>https://soap.securepay-gateway.in/ws/payments/v1</faultactor>
+      <detail>
+        <pay:PaymentFault>
+          <pay:errorCode>card_declined</pay:errorCode>
+          <pay:errorMessage>The issuing bank declined the transaction (insufficient funds).</pay:errorMessage>
+          <pay:retryable>false</pay:retryable>
+          <pay:gatewayReference>SPG-REF-20261013-5520417</pay:gatewayReference>
+        </pay:PaymentFault>
+      </detail>
+    </soap:Fault>
+  </soap:Body>
+</soap:Envelope>

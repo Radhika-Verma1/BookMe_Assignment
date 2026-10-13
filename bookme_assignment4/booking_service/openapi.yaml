@@ -1,0 +1,184 @@
+openapi: 3.0.3
+info:
+  title: BookMe Booking Service
+  version: 1.0.0
+  description: Owns bookings between an event and a vendor package. Calls the Payment service for the advance.
+servers:
+  - url: http://localhost:5001
+paths:
+  /bookings:
+    post:
+      summary: Create a booking (safely retryable)
+      operationId: createBooking
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BookingRequest'}
+      responses:
+        '201':
+          description: Created (or original result replayed for a repeated Idempotency-Key)
+          headers:
+            Location: {schema: {type: string}, description: URL of the new booking}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '503': {$ref: '#/components/responses/DependencyUnavailable'}
+    get:
+      summary: List bookings, filtered by query string
+      operationId: listBookings
+      parameters:
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/BookingStatus'}}
+        - {name: event_id, in: query, schema: {type: string}}
+        - {name: vendor_id, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: Matching bookings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BookingList'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /bookings/{bookingId}:
+    get:
+      summary: Read one booking
+      operationId: getBooking
+      parameters:
+        - $ref: '#/components/parameters/BookingId'
+      responses:
+        '200':
+          description: The booking
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /bookings/{bookingId}/confirmation:
+    post:
+      summary: Vendor confirms the booking
+      operationId: createConfirmation
+      parameters:
+        - $ref: '#/components/parameters/BookingId'
+      responses:
+        '200':
+          description: Booking now confirmed
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /bookings/{bookingId}/cancellation:
+    post:
+      summary: Cancel the booking (refund continues asynchronously)
+      operationId: createCancellation
+      parameters:
+        - $ref: '#/components/parameters/BookingId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CancellationRequest'}
+      responses:
+        '202':
+          description: Accepted; refund is pending
+          headers:
+            Location: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string}
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema: {type: string}
+  schemas:
+    BookingStatus:
+      type: string
+      enum: [pending_vendor, confirmed, cancelled]
+    BookingRequest:
+      type: object
+      required: [event_id, vendor_id, package_id, service_date, amount_inr]
+      properties:
+        event_id: {type: string}
+        vendor_id: {type: string}
+        package_id: {type: string}
+        service_date: {type: string, format: date}
+        amount_inr: {type: integer, minimum: 1}
+    CancellationRequest:
+      type: object
+      properties:
+        reason: {type: string}
+    Cancellation:
+      type: object
+      properties:
+        reason: {type: string}
+        refund_status: {type: string, enum: [pending, completed]}
+    Booking:
+      type: object
+      required: [id, event_id, vendor_id, package_id, service_date, amount_inr, status, created_at]
+      properties:
+        id: {type: string}
+        event_id: {type: string}
+        vendor_id: {type: string}
+        package_id: {type: string}
+        service_date: {type: string, format: date}
+        amount_inr: {type: integer}
+        status: {$ref: '#/components/schemas/BookingStatus'}
+        created_at: {type: string, format: date-time}
+        links:
+          type: object
+          additionalProperties: {type: string}
+        cancellation: {$ref: '#/components/schemas/Cancellation'}
+    BookingList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Booking'}
+        count: {type: integer}
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+  responses:
+    BadRequest:
+      description: Malformed body or parameter
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: No such booking
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Conflict:
+      description: Booking state does not allow this action
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unprocessable:
+      description: Valid request refused by domain rules (past date, vendor busy, payment refused)
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    DependencyUnavailable:
+      description: Payment service unreachable after retries
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}

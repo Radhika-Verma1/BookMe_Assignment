@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:pay="http://securepay-gateway.in/payment/v1">
+  <soap:Body>
+    <pay:ChargeBookingResponse>
+      <pay:transactionId>SPG-TXN-20261013-7781902</pay:transactionId>
+      <pay:status>CAPTURED</pay:status>
+      <pay:authCode>A4F27C</pay:authCode>
+      <pay:amount>45000.00</pay:amount>
+      <pay:currency>INR</pay:currency>
+      <pay:processedAt>2026-10-13T10:42:17Z</pay:processedAt>
+    </pay:ChargeBookingResponse>
+  </soap:Body>
+</soap:Envelope>

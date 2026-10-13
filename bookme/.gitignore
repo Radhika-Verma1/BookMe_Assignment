@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+# Build output
+dist/
+build/
+coverage/
+# Logs
+*.log
+npm-debug.log*
+# Environment files and secrets (only .env.example may be committed)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
