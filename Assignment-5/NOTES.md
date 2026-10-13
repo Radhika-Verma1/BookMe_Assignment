@@ -1,6 +1,15 @@
 # CS 543 – Web Services
 # Assignment 5: HTTP Methods & Headers
 
+## Team Details
+
+| S. No. | Team Member Name | Team ID |
+|---|---|---|
+| 1 | Radhika Verma | Team 11 |
+| 2 | Nandini Kanaujiya | Team 11 |
+| 3 | Alka Jha | Team 11 |
+| 4 | Alok Mishra | Team 11 |
+
 > **Project context:** BookMe – Distributed Multi-Vendor Event Services Platform  
 > **Service:** Event-Booking Service (`services/event-booking-service`, Port 4003)  
 > **Author:** Alka Jha (`TargetUltimate-Alka`, Person C)  
@@ -22,7 +31,7 @@
 
 ## 1. Objective
 
-The objective of this assignment is to audit the service endpoints from Assignment 4 and verify correct HTTP methods, safety and idempotency, query parameters, response status codes, request and response headers, conditional requests, caching, and safe retries for the BookMe **Event-Booking Service**.
+The objective of this assignment is to audit the service endpoints from Assignment 4 and verify correct HTTP methods, safety and idempotency, query parameters, response status codes, request and response headers, and protocol behavior of the BookMe Event-Booking Service.
 
 The implementation deliverables are:
 - Updated service source files (`src/app.js`, `eventController.js`, `routes.js`)
@@ -37,7 +46,7 @@ The implementation deliverables are:
 ### A1. Endpoint Method Map
 
 | Action | HTTP Method | URL / Endpoint | Success Status | Safe? | Idempotent? |
-|---|---|---|---|---|---|
+| |---|---|---|---|---|
 | Create an event resource | `POST` | `/events` | `201 Created` | No | No (without key); Yes (with `Idempotency-Key`) |
 | Read one event resource | `GET` | `/events/{id}` | `200 OK` | Yes | Yes |
 | List customer's events | `GET` | `/events` | `200 OK` | Yes | Yes |
@@ -54,7 +63,7 @@ The implementation deliverables are:
 
 ### A2. Non-CRUD Actions
 
-In accordance with RESTful API best practices and OpenAPI 3.1 guidelines, state-machine mutations and operational lifecycle transitions are modelled as **POST requests to sub-resources** rather than placing verbs in the top-level URL path:
+In accordance with RESTful API best practices and OpenAPI 3.1 guidelines, state-machine mutations and operational lifecycle transitions are modelled as **POST requests to sub-resources** rather than hidden RPC verbs.
 
 1. **Booking Cancellation (`POST /bookings/{id}/cancel`):**
    - *Description:* Initiates cancellation per SRS §2.4 fee schedule.
@@ -63,11 +72,11 @@ In accordance with RESTful API best practices and OpenAPI 3.1 guidelines, state-
 2. **Vendor GPS Check-In (`POST /bookings/{id}/check-in`):**
    - *Description:* Validates vendor latitude/longitude against event venue geofence.
    - *Implementation:* `src/modules/booking/routes.js:105-111`.
-   - *Verification:* Transitions status from `CONFIRMED` $\rightarrow$ `IN_PROGRESS` and logs `check_in_at` timestamp.
+   - *Verification:* Transitions status from `CONFIRMED` → `IN_PROGRESS` and logs `check_in_at` timestamp.
 3. **Booking Completion (`POST /bookings/{id}/complete`):**
    - *Description:* Customer or vendor marks service as delivered.
    - *Implementation:* `src/modules/booking/routes.js:113-125`.
-   - *Verification:* Transitions status from `IN_PROGRESS` $\rightarrow$ `COMPLETED` and schedules 24-hour escrow payout.
+   - *Verification:* Transitions status from `IN_PROGRESS` → `COMPLETED` and schedules 24-hour escrow payout.
 4. **Dispute Filing (`POST /bookings/{id}/dispute`):**
    - *Description:* Customer raises damage claim or non-performance dispute.
    - *Implementation:* `src/modules/booking/routes.js:142-148`.
@@ -109,7 +118,7 @@ The list endpoint `GET /events` supports filtering, sorting, and cursor/page pag
   - On collection (`/events`): `Allow: GET, POST, OPTIONS`
   - On single resource (`/events/{id}`): `Allow: GET, PATCH, PUT, DELETE, OPTIONS`
 - **`X-HTTP-Method-Override` Behavior:**
-  Implemented in `src/app.js:16-19`. When a client behind a restrictive proxy or legacy firewall sends `POST /events/{id}` with header `X-HTTP-Method-Override: PATCH`, Express rewrites `req.method = 'PATCH'` before route dispatching.
+  Implemented in `src/app.js:16-19`. When a client behind a restrictive proxy or legacy firewall sends `POST /events/{id}` with header `X-HTTP-Method-Override: PATCH`, Express rewrites `req.method` to `PATCH`.
 - **Verification Result:**
   Verified via Test 8 in `curl-transcript.txt`: `OPTIONS /events` returns `204 No Content` with `Allow: GET, POST, OPTIONS` and `Access-Control-Allow-Origin: *`.
 
@@ -192,17 +201,13 @@ connection: close
 
 ### B1. Content-Type and Negotiation
 - **JSON Default:** All response payloads specify `Content-Type: application/json; charset=utf-8`.
-- **Content Negotiation:** The service inspects incoming `Accept` headers. If a client requests an unsupported media representation such as `Accept: application/xml`, the middleware immediately returns `406 Not Acceptable`:
-  ```json
-  { "code": "NOT_ACCEPTABLE", "message": "Not Acceptable: only application/json supported" }
-  ```
-  *(Verified via Test 9 in curl-transcript.txt)*.
+- **Content Negotiation:** The service inspects incoming `Accept` headers. If a client requests an unsupported media representation such as `Accept: application/xml`, the middleware immediately rejects it with a structured `406 Not Acceptable` error.
 
 ### B2. Status Codes and Location
 
 | Scenario | Required Status / Behavior | Endpoint Verified |
 |---|---|---|
-| Successful resource creation | `201 Created` with `Location: /events/{id}` | `POST /events` (Returns `Location: /events/d79a69d3...`) |
+| Successful resource creation | `201 Created` with `Location: /events/{id}` | `POST /events` |
 | Successful read | `200 OK` | `GET /events/{id}` |
 | Successful deletion | `204 No Content` | `DELETE /checklist/{id}` |
 | Malformed request | `400 Bad Request` | `POST /events` with empty string name |
@@ -214,40 +219,28 @@ connection: close
 
 ### B3. Authorization
 - **Format:** `Authorization: Bearer <JWT_TOKEN>` (or gateway forwarded `X-User-Id` / `X-User-Role`).
-- **Missing Token Behavior:** Returning `401 Unauthorized`:
-  ```json
-  {
-    "code": "UNAUTHORIZED",
-    "message": "Authentication required",
-    "details": [{ "issue": "Missing authentication credentials" }]
-  }
-  ```
-  *(Verified via Test 7 in curl-transcript.txt)*.
+- **Missing Token Behavior:** Returning `401 Unauthorized`.
 
 ### B4. Cache-Control and ETag
 - **Endpoint:** `GET /events/{id}`
 - **Cache-Control Policy:** `Cache-Control: private, max-age=60`
 - **Example ETag:** `W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"`
-- **ETag Mutation Test:**
-  When `PATCH /events/{id}` modifies `guestCount: 400`, the server recalculates the MD5 hash of the event entity, producing a new distinct ETag (`W/"3fa-kL91..."`), proving cache invalidation.
 
 ### B5. Rate-Limit Signalling
 - **Response Headers:**
-  - `X-RateLimit-Limit: 100` (100 requests per 15-minute sliding window)
+  - `X-RateLimit-Limit: 100`
   - `X-RateLimit-Remaining: 99`
 - **Excess Traffic:** Returns `429 Too Many Requests` with `Retry-After: 900` when quota is exhausted.
-- **Client Identification:** Derived per client from authenticated user ID (`req.user.id`) with fallback to client IP address (`req.ip`).
 
 ### B6. CORS
-- **Permitted Origin:** Configured via `cors()` middleware with `Access-Control-Allow-Origin: *` (or specific client frontend origin `http://localhost:5173`).
+- **Permitted Origin:** Configured via `cors()` middleware with `Access-Control-Allow-Origin: *`.
 - **Allowed Methods & Headers:** `GET, POST, PUT, PATCH, DELETE, OPTIONS`, `Content-Type, Authorization, Idempotency-Key, If-Match, If-None-Match`.
-- **Preflight Verification:** `OPTIONS /events` returns `204 No Content` with appropriate CORS headers.
 
 ### B7. Security and General Headers
-- **`X-Content-Type-Options: nosniff`**: Enforced on every response to prevent MIME-sniffing vulnerabilities.
-- **`X-Request-Id`**: Emitted as a unique UUID tracing key for distributed telemetry.
-- **`Date`**: Emitted by HTTP engine (e.g., `Tue, 13 Oct 2026 15:12:08 GMT`).
-- **`Connection: close`**: Emitted per HTTP/1.1 single-shot protocol standards.
+- **`X-Content-Type-Options: nosniff`**
+- **`X-Request-Id`**
+- **`Date`**
+- **`Connection: close`**
 
 ---
 
@@ -255,59 +248,25 @@ connection: close
 
 ### C1. Conditional GET — 304 Not Modified
 When a client caches an event representation and issues a conditional GET with `If-None-Match`:
-- **Request:**
-  ```http
-  GET /events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa HTTP/1.1
-  Host: localhost:4003
-  If-None-Match: W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"
-  ```
-- **Response:**
-  ```http
-  HTTP/1.1 304 Not Modified
-  ETag: W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"
-  Cache-Control: private, max-age=60
-  Connection: close
-  ```
-  *(Verified: Body is strictly empty, saving bandwidth and serialization overhead).*
+- **Request:** `GET /events/{id}` with `If-None-Match` matching the current ETag.
+- **Response:** `304 Not Modified` with empty body.
 
 ### C2. Conditional Write — 412 Precondition Failed
-To prevent lost updates (mid-air collisions) when two clients edit the same event concurrently:
-- **Request:**
-  ```http
-  PATCH /events/d79a69d3-6aea-4039-b449-a7d9d04cb4fa HTTP/1.1
-  Host: localhost:4003
-  If-Match: W/"stale_invalid_etag_999"
-  Content-Type: application/json
-
-  { "guestCount": 400 }
-  ```
-- **Response:**
-  ```http
-  HTTP/1.1 412 Precondition Failed
-  Content-Type: application/json
-
-  {
-    "code": "PRECONDITION_FAILED",
-    "message": "Precondition Failed: Resource representation has changed"
-  }
-  ```
-  *(Verified: Update is rejected and database state remains unmodified).*
+When a client sends a stale `If-Match` value, the write is rejected with `412 Precondition Failed`.
 
 ### C3. Idempotency-Key
-- **Mechanism:** Idempotency middleware stores the request path, status code, and response body indexed by key in `idempotency_keys` table / store.
-- **First Request:** Returns `201 Created` with generated event UUID.
-- **Repeated Request (with same key):** Returns identical cached `201 Created` payload with header log `Returning cached idempotent response for key: idemp-assignment5-key-001`.
-- **Verification:** Database count remains exactly 1; zero duplicate event records created.
+- **Mechanism:** Idempotency middleware stores the request path, status code, and response body indexed by key.
+- **Repeated Request:** Returns the cached original response and avoids duplicates.
 
 ### C4. Safe-Retry Plan
 
 | Risky Operation | Method | Safety / Idempotency Classification | Risk on Retry | Safe Mechanism | Expected Behavior |
 |---|---|---|---|---|---|
-| **Event Creation** | `POST /events` | Not safe; Not inherently idempotent | Duplicate events & budget allocation | `Idempotency-Key` header | Cached original 201 response returned; no duplicate records. |
-| **Booking Creation** | `POST /bookings` | Not safe; Not inherently idempotent | Double-charging deposit & double-booking capacity | `Idempotency-Key` header | Returns original reservation snapshot without duplicate hold. |
-| **Event Retrieval** | `GET /events/{id}` | Safe & Idempotent | Redundant payload transfer | `If-None-Match` conditional ETag | `304 Not Modified` with zero-byte body. |
-| **Event Mutation** | `PATCH /events/{id}` | Not safe; Idempotent conditionally | Overwriting changes made by concurrent users | `If-Match` conditional ETag | `412 Precondition Failed` if stale representation. |
-| **Booking Cancellation** | `POST /bookings/{id}/cancel` | Not safe; Idempotent by state machine | Re-charging cancellation penalties | Status guard (`CANCELLED`) | Idempotently returns existing cancelled record. |
+| Event Creation | `POST /events` | Not safe; not inherently idempotent | Duplicate events | `Idempotency-Key` | Cached original 201 response |
+| Booking Creation | `POST /bookings` | Not safe; not inherently idempotent | Double-booking | `Idempotency-Key` | Cached original reservation snapshot |
+| Event Retrieval | `GET /events/{id}` | Safe & Idempotent | Redundant payload transfer | `If-None-Match` | `304 Not Modified` |
+| Event Mutation | `PATCH /events/{id}` | Not safe; idempotent conditionally | Overwriting concurrent edits | `If-Match` | `412 Precondition Failed` |
+| Booking Cancellation | `POST /bookings/{id}/cancel` | Not safe; idempotent by state machine | Re-charging cancellation penalties | Status guard | Existing state is returned |
 
 ---
 
@@ -317,7 +276,7 @@ To prevent lost updates (mid-air collisions) when two clients edit the same even
 
 | # | Test Scenario | Expected Outcome | Actual Outcome | Status |
 |---|---|---|---|:---:|
-| **1** | Create Resource | `201 Created` + `Location: /events/{id}` | `201 Created` + `location: /events/d79a69d3...` | **PASS** |
+| **1** | Create Resource | `201 Created` + `Location: /events/{id}` | `201 Created` + `location: /events/...` | **PASS** |
 | **2** | Idempotent Repeat | Original 201 result; zero duplicate work | `201 Created` from idempotent cache | **PASS** |
 | **3** | Conditional GET | `304 Not Modified`, empty body | `304 Not Modified`, 0-byte body | **PASS** |
 | **4** | Conditional Write | `412 Precondition Failed` | `412 Precondition Failed` | **PASS** |
@@ -327,21 +286,19 @@ To prevent lost updates (mid-air collisions) when two clients edit the same even
 | **8** | OPTIONS Preflight | `204 No Content` + `Allow` header | `204 No Content` + `Allow: GET, POST, OPTIONS` | **PASS** |
 | **9** | Content Negotiation | `406 Not Acceptable` on XML | `406 Not Acceptable` | **PASS** |
 
-*(Full raw output saved in [curl-transcript.txt](./curl-transcript.txt)).*
-
 ### D2. Endpoint × Header Table
 
 | Endpoint | Supported / Required Request Headers | Response Headers Set |
 |---|---|---|
-| `POST /events` | `Content-Type: application/json`, `Accept: application/json`, `Idempotency-Key`, `X-User-Id` | `Content-Type`, `Location`, `ETag`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-Content-Type-Options` |
-| `GET /events/{id}` | `Accept: application/json`, `If-None-Match`, `X-User-Id` | `Content-Type` (or empty on 304), `ETag`, `Cache-Control: private, max-age=60`, `X-RateLimit-*` |
+| `POST /events` | `Content-Type: application/json`, `Accept: application/json`, `Idempotency-Key`, `X-User-Id` | `Content-Type`, `Location`, `ETag`, `X-RateLimit-*` |
+| `GET /events/{id}` | `Accept: application/json`, `If-None-Match`, `X-User-Id` | `Content-Type`, `ETag`, `Cache-Control`, `X-RateLimit-*` |
 | `PATCH /events/{id}` | `Content-Type: application/json`, `Accept: application/json`, `If-Match`, `X-User-Id` | `Content-Type`, `ETag`, `X-RateLimit-*`, `X-Content-Type-Options` |
-| `GET /events` | `Accept: application/json`, `X-User-Id` (query params: `page`, `limit`, `sortBy`, `status`) | `Content-Type`, `X-RateLimit-*`, `X-Content-Type-Options` |
-| `OPTIONS /events` | None | `Allow: GET, POST, OPTIONS`, `Access-Control-Allow-Origin: *` |
+| `GET /events` | `Accept: application/json`, `X-User-Id` | `Content-Type`, `X-RateLimit-*`, `X-Content-Type-Options` |
+| `OPTIONS /events` | None | `Allow`, `Access-Control-Allow-Origin` |
 | `DELETE /events/{id}` | `X-User-Id`, `X-User-Role` | `Content-Type`, `X-RateLimit-*` |
 
 ### D3. OpenAPI and Automated Tests
-- **OpenAPI 3.1 Spec Updated:** Yes (saved in [openapi.yaml](./openapi.yaml)).
+- **OpenAPI 3.1 Spec Updated:** Yes.
 - **Automated Tests Executed:** `npm test` inside `services/event-booking-service`.
 - **Test Result:** 7 test suites passed, 88 tests passed (100% pass rate).
 - **Remaining Issues:** None.
@@ -353,60 +310,50 @@ To prevent lost updates (mid-air collisions) when two clients edit the same even
 ### Q1. For three endpoints, give the method, success status, and the single response header that matters most — and why.
 1. **`POST /events`:** Method `POST`, Status `201 Created`.  
    *Key Header:* `Location: /events/{id}`.  
-   *Why:* In REST architecture, the server must decouple client-side URL construction from resource generation. The `Location` header provides the authoritative canonical URI where the newly minted resource can be retrieved.
+   *Why:* It gives the canonical URI of the newly created resource.
 2. **`GET /events/{id}`:** Method `GET`, Status `200 OK`.  
    *Key Header:* `ETag: W/"..."`.  
-   *Why:* The ETag represents a cryptographic fingerprint of the current representation. It enables conditional requests (`If-None-Match`) to save bandwidth and eliminates race conditions (`If-Match`) on subsequent edits.
+   *Why:* Enables conditional requests and caching validation.
 3. **`OPTIONS /events`:** Method `OPTIONS`, Status `204 No Content`.  
    *Key Header:* `Allow: GET, POST, OPTIONS`.  
-   *Why:* `Allow` informs clients and API gateways which HTTP verbs are legally supported on the collection URI, preventing unnecessary 405 Method Not Allowed calls.
+   *Why:* Informs clients which methods are legal for that resource.
 
 ### Q2. Which endpoints are safe, and which are idempotent? Which one is neither, and how did you make it retry-safe?
-- **Safe Endpoints:** `GET /events`, `GET /events/{id}`, `GET /events/{id}/items`, `GET /bookings`, `OPTIONS /events`. They never alter server state.
-- **Idempotent Endpoints:** All safe endpoints plus `PUT /events/{id}`, `DELETE /events/{id}`, and `POST /bookings/{id}/cancel`.
-- **Neither Safe Nor Inherently Idempotent:** `POST /events` and `POST /bookings`. Repeated requests would generate multiple bookings and duplicate soft holds.
-- **How Made Retry-Safe:** Implemented the `Idempotency-Key` header mechanism. The server caches the transaction outcome keyed by this UUID. Any network retry returns the original response with zero duplicate processing.
+- **Safe Endpoints:** `GET /events`, `GET /events/{id}`, `GET /events/{id}/items`, `GET /bookings`, `OPTIONS /events`.
+- **Idempotent Endpoints:** `PUT /events/{id}`, `DELETE /events/{id}`, and `POST /bookings/{id}/cancel`.
+- **Neither Safe Nor Inherently Idempotent:** `POST /events` and `POST /bookings`.
+- **How Made Retry-Safe:** Implemented the `Idempotency-Key` header mechanism.
 
 ### Q3. Show one ETag, the request that returns 304, and the write that returns 412. What does each save or prevent?
 - **Observed ETag:** `W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"`
-- **Conditional GET (304):**
-  `GET /events/d79a69d3...` with `If-None-Match: W/"3f9-pBluPWpIzaPY2MUfUJglWcv9Qoc"` $\rightarrow$ `304 Not Modified`.  
-  *What it saves:* Saves network bandwidth, CPU serialization, and mobile battery by transmitting an empty response body when data has not changed.
-- **Conditional Write (412):**
-  `PATCH /events/d79a69d3...` with `If-Match: W/"stale_invalid_etag_999"` $\rightarrow$ `412 Precondition Failed`.  
-  *What it prevents:* Prevents the "lost update" problem where user B unknowingly overwrites modifications made by user A between user B's read and write.
+- **Conditional GET (304):** `GET /events/{id}` with `If-None-Match` returns `304 Not Modified`.
+- **Conditional Write (412):** `PATCH /events/{id}` with stale `If-Match` returns `412 Precondition Failed`.
 
 ### Q4. You return 422 for one case and 400 for another. Give the exact request that triggers each, and explain the difference.
-- **400 Bad Request:**
-  `POST /events` with body `{ "name": "" }`.  
-  *Reason:* Syntactic or schema validation failure—the payload fails required length bounds or contains malformed JSON syntax.
-- **422 Unprocessable Content:**
-  `POST /bookings/{id}/check-in` with `{ "latitude": 19.0760, "longitude": 72.8777 }` where the venue is in Ahmedabad (23.0225, 72.5714).  
-  *Reason:* Syntactically valid JSON and passes number schemas, but refused by domain business rules (vendor is 500 km away from venue geofence).
+- **400 Bad Request:** `POST /events` with body `{ "name": "" }`.
+- **422 Unprocessable Content:** `POST /bookings/{id}/check-in` outside the geofence.
 
 ### Q5. A browser page on another origin calls your API and is blocked, yet the server logs show 200. Who blocked it, and which response header fixes it?
-- **Who Blocked It:** The client browser's Same-Origin Policy (SOP) engine blocked JavaScript from reading the response. Because CORS is client-enforced, the server successfully processes the request and logs 200, but the browser drops the payload.
-- **Header that Fixes It:** `Access-Control-Allow-Origin: http://localhost:5173` (or `*`) along with handling `OPTIONS` preflight requests returning `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`.
+- **Who Blocked It:** The client browser's Same-Origin Policy (SOP) engine.
+- **Header that Fixes It:** `Access-Control-Allow-Origin: http://localhost:5173` (or `*`).
 
 ### Q6. Name one response where Cache-Control allows caching and one where you must use no-store. Why?
-1. **Allows Caching:** `GET /events/{id}` $\rightarrow$ `Cache-Control: private, max-age=60`.  
-   *Why:* Event planning details change infrequently during an active planning session, so 60-second client-side caching improves UI responsiveness.
-2. **Must Use `no-store`:** `POST /api/auth/login` or `POST /api/payments` $\rightarrow$ `Cache-Control: no-store`.  
-   *Why:* Authentication tokens and financial card/UPI transactions must never be cached on disk or shared proxies, per PCI-DSS and OWASP security standards.
+1. **Allows Caching:** `GET /events/{id}` → `Cache-Control: private, max-age=60`.
+2. **Must Use `no-store`:** `POST /api/auth/login` or `POST /api/payments`.
 
 ### Q7. Your search endpoint is GET. When would POST be the right choice instead, and what do you give up by switching?
-- **When POST is Right:** When the search criteria include large nested JSON structures (e.g., matching 50 custom checklist items with geo-polygons, price arrays, and vendor exclusions) exceeding URL length limits (2,048 characters), or when search queries contain sensitive data.
-- **What You Give Up:** You give up safe read-only semantics, URL bookmarkability, browser link sharing, CDN caching, and conditional ETag caching.
+- **When POST is Right:** For large nested search payloads or non-idempotent operational commands.
+- **What You Give Up:** Safe semantics, URL bookmarkability, and HTTP caching behavior.
 
 ### Q8. Location appears on a 201 and on a 3xx. What does it point to in each case?
-- **On a `201 Created`:** `Location` points to the canonical URI of the **newly created resource** (e.g., `/events/d79a69d3...`).
-- **On a `3xx Redirect`:** `Location` points to the target URI where the client should **redirect** the request (e.g., `/login` or canonical new route).
+- **On a `201 Created`:** It points to the newly created resource URI.
+- **On a `3xx Redirect`:** It points to the target redirect URI.
 
 ---
 
 ## 7. Conclusion
 
-The BookMe Event-Booking Service has been comprehensively verified against all requirements of Assignment 5. It strictly adheres to HTTP method safety and idempotency, sets mandatory headers (`Location`, `ETag`, `Cache-Control`, `X-Content-Type-Options`, `X-RateLimit-*`), enforces conditional caching (304) and optimistic locking (412), protects write operations via `Idempotency-Key`, and exposes clean CORS/OPTIONS preflight controls.
+The BookMe Event-Booking Service has been comprehensively verified against all requirements of Assignment 5.
 
 ---
 
@@ -427,3 +374,4 @@ The BookMe Event-Booking Service has been comprehensively verified against all r
 - [x] Completed the endpoint-header table (D2)
 - [x] Answered all eight questions (Q1..Q8)
 - [x] Added Team ID, roll numbers, and names
+
